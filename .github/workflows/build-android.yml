@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - master
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取代码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. 配置 Java 17
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+          cache: gradle
+
+      # 3. 配置 Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.x'
+          channel: stable
+          cache: true
+
+      # 4. 查看环境
+      - name: Flutter Doctor
+        run: flutter doctor -v
+
+      # 5. 获取依赖
+      - name: Flutter Pub Get
+        working-directory: simple_live_app
+        run: flutter pub get
+
+      # 6. 编译 Android APK
+      - name: Build APK
+        working-directory: simple_live_app
+        run: flutter build apk --release --split-per-abi
+
+      # 7. 上传 APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: simple_live_app/build/app/outputs/flutter-apk/*.apk
