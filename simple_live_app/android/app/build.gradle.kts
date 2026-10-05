@@ -4,19 +4,38 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+/*
+ * Android 签名配置
+ *
+ * GitHub Actions 会在构建前创建：
+ *
+ * simple_live_app/android/key.properties
+ *
+ * 内容类似：
+ *
+ * storePassword=xxxx
+ * keyPassword=xxxx
+ * keyAlias=simple-live
+ * storeFile=/home/runner/work/dart_simple_live/dart_simple_live/release.jks
+ */
 val keystoreProperties = Properties()
+
 val keystorePropertiesFile = rootProject.file("key.properties")
+
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.xycz.simple_live"
+
     compileSdk = flutter.compileSdkVersion
+
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -29,22 +48,28 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.xycz.simple_live"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    /*
+     * Release 签名
+     */
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+
+            storeFile = keystoreProperties["storeFile"]
+                ?.let { file(it) }
+
             storePassword = keystoreProperties["storePassword"] as String
+
             isV1SigningEnabled = true
             isV2SigningEnabled = true
         }
@@ -52,13 +77,18 @@ android {
 
     buildTypes {
         release {
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            /*
+             * 使用 GitHub Actions 创建的正式签名
+             */
             signingConfig = signingConfigs.getByName("release")
+
             isMinifyEnabled = true
             isShrinkResources = true
+
             proguardFiles(
-                // Default file with automatically generated optimization rules.
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt"
+                ),
                 "proguard-rules.pro"
             )
         }
