@@ -13,11 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 拉取代码
+      # =========================
+      # 1. Checkout
+      # =========================
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. 配置 Java 17
+      # =========================
+      # 2. Java
+      # =========================
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -25,7 +29,9 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # 3. 配置 Flutter
+      # =========================
+      # 3. Flutter
+      # =========================
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -33,21 +39,48 @@ jobs:
           channel: stable
           cache: true
 
-      # 4. 查看环境
-      - name: Flutter Doctor
-        run: flutter doctor -v
+      # =========================
+      # 4. Restore Android Keystore
+      # =========================
+      - name: Decode Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/release.jks"
 
-      # 5. 获取依赖
+      # =========================
+      # 5. Create key.properties
+      # =========================
+      - name: Create key.properties
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          cat > simple_live_app/android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=$GITHUB_WORKSPACE/release.jks
+          EOF
+
+      # =========================
+      # 6. Flutter Pub Get
+      # =========================
       - name: Flutter Pub Get
         working-directory: simple_live_app
         run: flutter pub get
 
-      # 6. 编译 Android APK
+      # =========================
+      # 7. Build Signed APK
+      # =========================
       - name: Build APK
         working-directory: simple_live_app
         run: flutter build apk --release --split-per-abi
 
-      # 7. 上传 APK
+      # =========================
+      # 8. Upload APK
+      # =========================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
